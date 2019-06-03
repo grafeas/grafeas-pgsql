@@ -1,2 +1,26 @@
 # grafeas-pgsql
-Grafeas with PostgreSQL backend
+
+[Grafeas](https://github.com/grafeas/grafeas) with PostgreSQL backend as a Docker Compose, provides a standalone instance of the Grafeas server with PostgreSQL as the storage layer.
+
+## Running Standalone Grafeas with PostgreSQL
+
+To start the standalone instance of Grafeas with PostgreSQL, follow these steps:
+
+1. Install [Docker Compose](https://docs.docker.com/compose/install/).
+2. Build the images and run the containers:
+
+   ```bash
+   docker-compose build
+   docker-compose up
+   ```
+
+## Support
+
+Please refer to [Grafeas Support](https://github.com/grafeas/grafeas#support) page.
+
+## Contributing
+
+Pull requests and feature requests as GH issues are welcome!
+
+## License
+Grafeas is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.

@@ -7,11 +7,16 @@
 To start the standalone instance of Grafeas with PostgreSQL, follow these steps:
 
 1. Install [Docker Compose](https://docs.docker.com/compose/install/).
-2. Build the images and run the containers:
+1. Pull the Grafeas Server image:
 
    ```bash
-   docker-compose build
-   docker-compose up
+   docker pull us.gcr.io/grafeas/grafeas-server:0.1.0
+   ```
+
+1. Build the images and run the containers:
+
+   ```bash
+   docker-compose build && docker-compose up
    ```
 
 ## Support

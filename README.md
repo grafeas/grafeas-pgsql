@@ -19,6 +19,12 @@ To start the standalone instance of Grafeas with PostgreSQL, follow these steps:
    docker-compose build && docker-compose up
    ```
 
+1. Ensure you can reach the server:
+
+```bash
+curl http://localhost:8080/v1beta1/projects
+```
+
 ## Support
 
 Please refer to [Grafeas Support](https://github.com/grafeas/grafeas#support) page.

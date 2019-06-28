@@ -2,11 +2,9 @@
 version: 2
 jobs:
   build:
-    docker:
-      - image: circleci/golang:1.12
+    machine: true
     steps:
       - checkout
-      - setup_remote_docker
       - run:
           name: Start Grafeas with PostreSQL and verify it is working
           command: |

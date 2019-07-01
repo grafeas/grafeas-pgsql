@@ -10,6 +10,10 @@ jobs:
           command: |
             docker-compose up -d
             curl -v http://localhost:8080/v1beta1/projects > /tmp/a
+            curl -v http://localhost:8080/v1beta1/projects > /tmp/a
+            curl -v http://localhost:8080/v1beta1/projects > /tmp/a
+            curl -v http://localhost:8080/v1beta1/projects > /tmp/a
+            curl -v http://localhost:8080/v1beta1/projects > /tmp/a
             cat /tmp/a
 workflows:
   version: 2

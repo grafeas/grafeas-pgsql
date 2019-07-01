@@ -1,0 +1,31 @@
+# Check https://circleci.com/docs/2.0/language-go/ for more details
+version: 2
+jobs:
+  build:
+    machine: true
+    steps:
+      - checkout
+      - run:
+          name: Start Grafeas with PostreSQL and verify it is working
+          command: |
+            docker-compose up -d
+            docker ps -all
+            sleep 30
+            curl --retry 10 --retry-delay 5 -v http://localhost:8080/v1beta1/projects > /tmp/a
+            cat /tmp/a
+workflows:
+  version: 2
+  commit:
+    jobs:
+      - build
+  nightly:
+    triggers:
+      - schedule:
+          # Every day at midnight.
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build

@@ -9,11 +9,9 @@ jobs:
           name: Start Grafeas with PostreSQL and verify it is working
           command: |
             docker-compose up -d
-            curl -v http://localhost:8080/v1beta1/projects > /tmp/a
-            curl -v http://localhost:8080/v1beta1/projects > /tmp/a
-            curl -v http://localhost:8080/v1beta1/projects > /tmp/a
-            curl -v http://localhost:8080/v1beta1/projects > /tmp/a
-            curl -v http://localhost:8080/v1beta1/projects > /tmp/a
+            docker ps -all
+            sleep 30
+            curl --retry 10 --retry-delay 5 -v http://localhost:8080/v1beta1/projects > /tmp/a
             cat /tmp/a
 workflows:
   version: 2

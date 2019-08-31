@@ -19,15 +19,17 @@ import (
 	"os"
 	"testing"
 
+	pgsql "github.com/grafeas/grafeas-pgsql/go/v1beta1/storage"
+	grafeas "github.com/grafeas/grafeas/go/v1beta1/api"
+
 	"github.com/grafeas/grafeas/go/config"
 	"github.com/grafeas/grafeas/go/v1beta1/project"
-	"github.com/grafeas/grafeas/go/v1beta1/storage"
 )
 
 func dropDatabase(t *testing.T, config *config.PgSQLConfig) {
 	t.Helper()
 	// Open database
-	source := storage.CreateSourceString(config.User, config.Password, config.Host, "postgres", config.SSLMode)
+	source := pgsql.CreateSourceString(config.User, config.Password, config.Host, "postgres", config.SSLMode)
 	db, err := sql.Open("postgres", source)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
@@ -56,7 +58,7 @@ func TestBetaPgSQLStore(t *testing.T) {
 			SSLMode:       "disable",
 			PaginationKey: "XxoPtCUzrUv4JV5dS+yQ+MdW7yLEJnRMwigVY/bpgtQ=",
 		}
-		pg := storage.NewPgSQLStore(config)
+		pg := pgsql.NewPgSQLStore(config)
 		var g grafeas.Storage = pg
 		var gp project.Storage = pg
 		return g, gp, func() { dropDatabase(t, config); pg.Close() }
@@ -78,7 +80,7 @@ func TestPgSQLStoreWithUserAsEnv(t *testing.T) {
 		}
 		_ = os.Setenv("PGUSER", "postgres")
 		_ = os.Setenv("PGPASSWORD", "password")
-		pg := storage.NewPgSQLStore(config)
+		pg := pgsql.NewPgSQLStore(config)
 		var g grafeas.Storage = pg
 		var gp project.Storage = pg
 		return g, gp, func() { dropDatabase(t, config); pg.Close() }

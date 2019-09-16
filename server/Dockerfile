@@ -1,4 +1,4 @@
-FROM us.gcr.io/grafeas/grafeas-server:0.1.0
+FROM us.gcr.io/grafeas/grafeas-server:v0.1.0
 WORKDIR /
 COPY ./config.yaml /config.yaml
 COPY ./wait.sh /wait.sh

@@ -8,3 +8,7 @@ services:
       - db
   db:
     build: 'postgres'
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password

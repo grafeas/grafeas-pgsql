@@ -10,7 +10,7 @@ To start the standalone instance of Grafeas with PostgreSQL, follow these steps:
 1. Pull the Grafeas Server image:
 
    ```bash
-   docker pull us.gcr.io/grafeas/grafeas-server:0.1.0
+   docker pull us.gcr.io/grafeas/grafeas-server:v0.1.0
    ```
 
 1. Build the images and run the containers:

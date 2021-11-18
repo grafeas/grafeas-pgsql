@@ -16,6 +16,7 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -41,26 +42,26 @@ type PgSQLStore struct {
 	paginationKey string
 }
 
-func NewPgSQLStore(config *config.PgSQLConfig) *PgSQLStore {
+func NewPgSQLStore(config *config.PgSQLConfig) (*PgSQLStore, error) {
 	err := createDatabase(CreateSourceString(config.User, config.Password, config.Host, "postgres", config.SSLMode), config.DbName)
 	if err != nil {
-		log.Fatal(err.Error())
+		return nil, err
 	}
 	db, err := sql.Open("postgres", CreateSourceString(config.User, config.Password, config.Host, config.DbName, config.SSLMode))
 	if err != nil {
-		log.Fatal(err.Error())
+		return nil, err
 	}
 	if db.Ping() != nil {
-		log.Fatal("Database server is not alive")
+		return nil, errors.New("database server is not alive")
 	}
 	if _, err := db.Exec(createTables); err != nil {
 		db.Close()
-		log.Fatal(err.Error())
+		return nil, err
 	}
 	return &PgSQLStore{
 		DB:            db,
 		paginationKey: config.PaginationKey,
-	}
+	}, nil
 }
 
 func createDatabase(source, dbName string) error {
@@ -96,10 +97,9 @@ func (pg *PgSQLStore) CreateProject(ctx context.Context, pID string, p *prpb.Pro
 		// Check for unique_violation
 		if err.Code == "23505" {
 			return nil, status.Errorf(codes.AlreadyExists, "Project with name %q already exists", pID)
-		} else {
-			log.Println("Failed to insert Project in database", err)
-			return nil, status.Error(codes.Internal, "Failed to insert Project in database")
 		}
+		log.Println("Failed to insert Project in database", err)
+		return nil, status.Error(codes.Internal, "Failed to insert Project in database")
 	}
 	return p, nil
 }
@@ -138,30 +138,38 @@ func (pg *PgSQLStore) GetProject(ctx context.Context, pID string) (*prpb.Project
 // ListProjects returns up to pageSize number of projects beginning at pageToken (or from
 // start if pageToken is the empty string).
 func (pg *PgSQLStore) ListProjects(ctx context.Context, filter string, pageSize int, pageToken string) ([]*prpb.Project, string, error) {
+	var filterQuery string
+	if filter != "" {
+		var fs FilterSQL
+		filterQuery = " AND " + fs.ParseFilter(filter)
+	}
+
+	query := fmt.Sprint(listProjects, filterQuery)
 	var rows *sql.Rows
 	id := decryptInt64(pageToken, pg.paginationKey, 0)
-	rows, err := pg.DB.Query(listProjects, id, pageSize)
+	rows, err := pg.DB.QueryContext(ctx, query, id, pageSize)
 	if err != nil {
 		return nil, "", status.Error(codes.Internal, "Failed to list Projects from database")
 	}
+
 	count, err := pg.count(projectCount)
 	if err != nil {
 		return nil, "", status.Error(codes.Internal, "Failed to count Projects from database")
 	}
 	var projects []*prpb.Project
-	var lastId int64
+	var lastID int64
 	for rows.Next() {
 		var name string
-		err := rows.Scan(&lastId, &name)
+		err := rows.Scan(&lastID, &name)
 		if err != nil {
 			return nil, "", status.Error(codes.Internal, "Failed to scan Project row")
 		}
 		projects = append(projects, &prpb.Project{Name: name})
 	}
-	if count == lastId {
+	if count == lastID {
 		return projects, "", nil
 	}
-	encryptedPage, err := encryptInt64(lastId, pg.paginationKey)
+	encryptedPage, err := encryptInt64(lastID, pg.paginationKey)
 	if err != nil {
 		return nil, "", status.Error(codes.Internal, "Failed to paginate projects")
 	}
@@ -191,10 +199,9 @@ func (pg *PgSQLStore) CreateOccurrence(ctx context.Context, pID, uID string, o *
 		// Check for unique_violation
 		if err.Code == "23505" {
 			return nil, status.Errorf(codes.AlreadyExists, "Occurrence with name %q already exists", o.Name)
-		} else {
-			log.Println("Failed to insert Occurrence in database", err)
-			return nil, status.Error(codes.Internal, "Failed to insert Occurrence in database")
 		}
+		log.Println("Failed to insert Occurrence in database", err)
+		return nil, status.Error(codes.Internal, "Failed to insert Occurrence in database")
 	}
 	return o, nil
 }
@@ -269,8 +276,7 @@ func (pg *PgSQLStore) GetOccurrence(ctx context.Context, pID, oID string) (*pb.O
 		return nil, status.Error(codes.Internal, "Failed to query Occurrence from database")
 	}
 	var o pb.Occurrence
-	proto.UnmarshalText(data, &o)
-	if err != nil {
+	if err = proto.UnmarshalText(data, &o); err != nil {
 		return nil, status.Error(codes.Internal, "Failed to unmarshal Occurrence from database")
 	}
 	// Set the output-only field before returning
@@ -281,12 +287,20 @@ func (pg *PgSQLStore) GetOccurrence(ctx context.Context, pID, oID string) (*pb.O
 // ListOccurrences returns up to pageSize number of occurrences for this project beginning
 // at pageToken, or from start if pageToken is the empty string.
 func (pg *PgSQLStore) ListOccurrences(ctx context.Context, pID, filter, pageToken string, pageSize int32) ([]*pb.Occurrence, string, error) {
+	var filterQuery string
+	if filter != "" {
+		var fs FilterSQL
+		filterQuery = " AND " + fs.ParseFilter(filter)
+	}
+
+	query := fmt.Sprint(listOccurrences, filterQuery)
 	var rows *sql.Rows
 	id := decryptInt64(pageToken, pg.paginationKey, 0)
-	rows, err := pg.DB.Query(listOccurrences, pID, id, pageSize)
+	rows, err := pg.DB.QueryContext(ctx, query, pID, id, pageSize)
 	if err != nil {
 		return nil, "", status.Error(codes.Internal, "Failed to list Occurrences from database")
 	}
+
 	count, err := pg.count(occurrenceCount, pID)
 	if err != nil {
 		return nil, "", status.Error(codes.Internal, "Failed to count Occurrences from database")
@@ -300,8 +314,7 @@ func (pg *PgSQLStore) ListOccurrences(ctx context.Context, pID, filter, pageToke
 			return nil, "", status.Error(codes.Internal, "Failed to scan Occurrences row")
 		}
 		var o pb.Occurrence
-		proto.UnmarshalText(data, &o)
-		if err != nil {
+		if err = proto.UnmarshalText(data, &o); err != nil {
 			return nil, "", status.Error(codes.Internal, "Failed to unmarshal Occurrence from database")
 		}
 		os = append(os, &o)
@@ -328,10 +341,9 @@ func (pg *PgSQLStore) CreateNote(ctx context.Context, pID, nID, uID string, n *p
 		// Check for unique_violation
 		if err.Code == "23505" {
 			return nil, status.Errorf(codes.AlreadyExists, "Note with name %q already exists", n.Name)
-		} else {
-			log.Println("Failed to insert Note in database", err)
-			return nil, status.Error(codes.Internal, "Failed to insert Note in database")
 		}
+		log.Println("Failed to insert Note in database", err)
+		return nil, status.Error(codes.Internal, "Failed to insert Note in database")
 	}
 	return n, nil
 }
@@ -409,8 +421,7 @@ func (pg *PgSQLStore) GetNote(ctx context.Context, pID, nID string) (*pb.Note, e
 		return nil, status.Error(codes.Internal, "Failed to query Note from database")
 	}
 	var note pb.Note
-	proto.UnmarshalText(data, &note)
-	if err != nil {
+	if err = proto.UnmarshalText(data, &note); err != nil {
 		return nil, status.Error(codes.Internal, "Failed to unmarshal Note from database")
 	}
 	// Set the output-only field before returning
@@ -441,12 +452,19 @@ func (pg *PgSQLStore) GetOccurrenceNote(ctx context.Context, pID, oID string) (*
 // ListNotes returns up to pageSize number of notes for this project (pID) beginning
 // at pageToken (or from start if pageToken is the empty string).
 func (pg *PgSQLStore) ListNotes(ctx context.Context, pID, filter, pageToken string, pageSize int32) ([]*pb.Note, string, error) {
-	var rows *sql.Rows
+	var filterQuery string
+	if filter != "" {
+		var fs FilterSQL
+		filterQuery = " AND " + fs.ParseFilter(filter)
+	}
+
+	query := fmt.Sprint(listNotes, filterQuery)
 	id := decryptInt64(pageToken, pg.paginationKey, 0)
-	rows, err := pg.DB.Query(listNotes, pID, id, pageSize)
+	rows, err := pg.DB.QueryContext(ctx, query, pID, id, pageSize)
 	if err != nil {
 		return nil, "", status.Error(codes.Internal, "Failed to list Notes from database")
 	}
+
 	count, err := pg.count(noteCount, pID)
 	if err != nil {
 		return nil, "", status.Error(codes.Internal, "Failed to count Notes from database")
@@ -460,8 +478,7 @@ func (pg *PgSQLStore) ListNotes(ctx context.Context, pID, filter, pageToken stri
 			return nil, "", status.Error(codes.Internal, "Failed to scan Notes row")
 		}
 		var n pb.Note
-		proto.UnmarshalText(data, &n)
-		if err != nil {
+		if err = proto.UnmarshalText(data, &n); err != nil {
 			return nil, "", status.Error(codes.Internal, "Failed to unmarshal Note from database")
 		}
 		ns = append(ns, &n)
@@ -502,8 +519,7 @@ func (pg *PgSQLStore) ListNoteOccurrences(ctx context.Context, pID, nID, filter,
 			return nil, "", status.Error(codes.Internal, "Failed to scan Occurrences row")
 		}
 		var o pb.Occurrence
-		proto.UnmarshalText(data, &o)
-		if err != nil {
+		if err = proto.UnmarshalText(data, &o); err != nil {
 			return nil, "", status.Error(codes.Internal, "Failed to unmarshal Occurrence from database")
 		}
 		os = append(os, &o)

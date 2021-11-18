@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage_test
+package storage
 
 import (
 	"database/sql"
@@ -20,8 +20,21 @@ import (
 	"testing"
 
 	"github.com/grafeas/grafeas/go/config"
+	grafeas "github.com/grafeas/grafeas/go/v1beta1/api"
 	"github.com/grafeas/grafeas/go/v1beta1/project"
 	"github.com/grafeas/grafeas/go/v1beta1/storage"
+)
+
+type testPgHelper struct {
+	pgDataPath string
+	pgBinPath  string
+	startedPg  bool
+	pgConfig   *config.PgSQLConfig
+}
+
+var (
+	//Unfortunately, not a good way to pass this information around to tests except via a globally scoped var
+	pgsqlstoreTestPgConfig *testPgHelper
 )
 
 func dropDatabase(t *testing.T, config *config.PgSQLConfig) {
@@ -49,20 +62,23 @@ func TestBetaPgSQLStore(t *testing.T) {
 	createPgSQLStore := func(t *testing.T) (grafeas.Storage, project.Storage, func()) {
 		t.Helper()
 		config := &config.PgSQLConfig{
-			Host:          "127.0.0.1:5432",
+			Host:          pgsqlstoreTestPgConfig.pgConfig.Host,
 			DbName:        "test_db",
-			User:          "postgres",
-			Password:      "password",
-			SSLMode:       "disable",
+			User:          pgsqlstoreTestPgConfig.pgConfig.User,
+			Password:      pgsqlstoreTestPgConfig.pgConfig.Password,
+			SSLMode:       pgsqlstoreTestPgConfig.pgConfig.SSLMode,
 			PaginationKey: "XxoPtCUzrUv4JV5dS+yQ+MdW7yLEJnRMwigVY/bpgtQ=",
 		}
-		pg := storage.NewPgSQLStore(config)
+		pg, err := NewPgSQLStore(config)
+		if err != nil {
+			t.Errorf("Error creating PgSQLStore, %s", err)
+		}
 		var g grafeas.Storage = pg
 		var gp project.Storage = pg
 		return g, gp, func() { dropDatabase(t, config); pg.Close() }
 	}
 
-	doTestStorage(t, createPgSQLStore)
+	storage.DoTestStorage(t, createPgSQLStore)
 }
 
 func TestPgSQLStoreWithUserAsEnv(t *testing.T) {
@@ -78,11 +94,13 @@ func TestPgSQLStoreWithUserAsEnv(t *testing.T) {
 		}
 		_ = os.Setenv("PGUSER", "postgres")
 		_ = os.Setenv("PGPASSWORD", "password")
-		pg := storage.NewPgSQLStore(config)
+		pg, err := storage.NewPgSQLStore(config)
+		if err != nil {
+			t.Errorf("Error creating PgSQLStore: %v", err)
+		}
 		var g grafeas.Storage = pg
 		var gp project.Storage = pg
 		return g, gp, func() { dropDatabase(t, config); pg.Close() }
 	}
-
-	doTestStorage(t, createPgSQLStore)
+	storage.DoTestStorage(t, createPgSQLStore)
 }

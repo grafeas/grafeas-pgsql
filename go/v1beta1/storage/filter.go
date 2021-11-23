@@ -86,7 +86,6 @@ func (fs *FilterSQL) getConstantValue(constExpr *expr.Constant) string {
 }
 
 func (fs *FilterSQL) makeSQL(node *expr.Expr) string {
-	//log.Println("depth: ", fs.depth, "node:", node)
 	switch node.GetExprKind().(type) {
 	case *expr.Expr_CallExpr:
 		funcNode := *node.GetCallExpr()
@@ -134,45 +133,12 @@ func (fs *FilterSQL) makeSQL(node *expr.Expr) string {
 
 // ParseFilter parses the incoming filter and returns a formatted SQL query.
 func (fs *FilterSQL) ParseFilter(filter string) string {
-	log.Println(filter)
-	// replace string value for kind with integer
-	/*
-		kindPattern := `kind=".*?"`
-		re := regexp.MustCompile(kindPattern)
-		indices := re.FindStringIndex(filter)
-		if indices != nil {
-			int_val := 0
-			switch filter[indices[0]+6 : indices[1]-1] {
-			case "VULNERABILITY":
-				int_val = 1
-			case "BUILD":
-				int_val = 2
-			case "IMAGE":
-				int_val = 3
-			case "PACKAGE":
-				int_val = 4
-			case "DEPLOYMENT":
-				int_val = 5
-			case "DISCOVERY":
-				int_val = 6
-			case "ATTESTATION":
-				int_val = 7
-			case "INTOTO":
-				int_val = 8
-			}
-			filter = filter[:indices[0]+5] + fmt.Sprintf("%d", int_val) + filter[indices[1]:]
-			// log.Println(filter)
-		}
-	*/
 	s := common.NewStringSource(filter, "urlParam") // function
 	result, err := parser.Parse(s)
 	if err != nil {
 		log.Println(err)
 		return ""
 	}
-	// log.Println(result.Expr.GetCallExpr().Args[1].GetCallExpr().Args[0].GetIdentExpr().Name)
-	// log.Println(result.Expr)
 	sql := fs.makeSQL(result.Expr)
-	//log.Println(sql)
 	return sql
 }

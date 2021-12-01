@@ -23,14 +23,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/grafeas/grafeas/go/v1beta1/storage"
-
 	"github.com/fernet/fernet-go"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
 	"github.com/grafeas/grafeas/go/config"
 	"github.com/grafeas/grafeas/go/name"
+	"github.com/grafeas/grafeas/go/v1beta1/storage"
 	pb "github.com/grafeas/grafeas/proto/v1beta1/grafeas_go_proto"
 	prpb "github.com/grafeas/grafeas/proto/v1beta1/project_go_proto"
 	"github.com/lib/pq"

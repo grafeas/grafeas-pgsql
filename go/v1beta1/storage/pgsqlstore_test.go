@@ -14,7 +14,6 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/grafeas/grafeas/go/config"
 	grafeas "github.com/grafeas/grafeas/go/v1beta1/api"
 	"github.com/grafeas/grafeas/go/v1beta1/project"
 	"github.com/grafeas/grafeas/go/v1beta1/storage"
@@ -69,7 +68,7 @@ func startupPostgres(pgData *testPgHelper) error {
 
 	//Init db
 	pgCtl := filepath.Join(pgData.pgBinPath, "pg_ctl")
-	fmt.Fprintln(os.Stderr, "testing: intializing test postgres instance under", pgData.pgDataPath)
+	fmt.Fprintln(os.Stderr, "testing: initializing test postgres instance under", pgData.pgDataPath)
 	pgCtlInitDBOptions := fmt.Sprintf("--username %s --pwfile %s", pgData.pgConfig.User, passwordTempFile.Name())
 	cmd := exec.Command(pgCtl, "--pgdata", pgData.pgDataPath, "-o", pgCtlInitDBOptions, "initdb")
 	if err := cmd.Run(); err != nil {
@@ -102,7 +101,7 @@ func findAvailablePort() (availablePort int, err error) {
 }
 
 func isPostgresRunning(config *Config) bool {
-	source := storage.CreateSourceString(config.User, config.Password, config.Host, "postgres", config.SSLMode)
+	source := CreateSourceString(config.User, config.Password, config.Host, "postgres", config.SSLMode)
 	db, err := sql.Open("postgres", source)
 	if err != nil {
 		return false
@@ -188,10 +187,10 @@ func teardown(pgData *testPgHelper) error {
 	return stopPostgres(pgData)
 }
 
-func dropDatabase(t *testing.T, config *config.PgSQLConfig) {
+func dropDatabase(t *testing.T, config *Config) {
 	t.Helper()
 	// Open database
-	source := storage.CreateSourceString(config.User, config.Password, config.Host, "postgres", config.SSLMode)
+	source := CreateSourceString(config.User, config.Password, config.Host, "postgres", config.SSLMode)
 	db, err := sql.Open("postgres", source)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
@@ -200,11 +199,11 @@ func dropDatabase(t *testing.T, config *config.PgSQLConfig) {
 	if _, err := db.Exec(`
 		SELECT pg_terminate_backend(pid)
 		FROM pg_stat_activity
-		WHERE datname = $1`, config.DbName); err != nil {
+		WHERE datname = $1`, config.DBName); err != nil {
 		t.Fatalf("Failed to drop database: %v", err)
 	}
 	// Drop database
-	if _, err := db.Exec("DROP DATABASE " + config.DbName); err != nil {
+	if _, err := db.Exec("DROP DATABASE " + config.DBName); err != nil {
 		t.Fatalf("Failed to drop database: %v", err)
 	}
 }
@@ -229,15 +228,15 @@ func TestMain(m *testing.M) {
 func TestBetaPgSQLStore(t *testing.T) {
 	createPgSQLStore := func(t *testing.T) (grafeas.Storage, project.Storage, func()) {
 		t.Helper()
-		config := &config.PgSQLConfig{
+		config := &Config{
 			Host:          pgsqlstoreTestPgConfig.pgConfig.Host,
-			DbName:        "test_db",
+			DBName:        "test_db",
 			User:          pgsqlstoreTestPgConfig.pgConfig.User,
 			Password:      pgsqlstoreTestPgConfig.pgConfig.Password,
 			SSLMode:       pgsqlstoreTestPgConfig.pgConfig.SSLMode,
-			PaginationKey: "XxoPtCUzrUv4JV5dS+yQ+MdW7yLEJnRMwigVY/bpgtQ=",
+			PaginationKey: paginationKey,
 		}
-		pg, err := storage.NewPgSQLStore(config)
+		pg, err := NewPgSQLStore(config)
 		if err != nil {
 			t.Errorf("Error creating PgSQLStore, %s", err)
 		}
@@ -252,17 +251,17 @@ func TestBetaPgSQLStore(t *testing.T) {
 func TestPgSQLStoreWithUserAsEnv(t *testing.T) {
 	createPgSQLStore := func(t *testing.T) (grafeas.Storage, project.Storage, func()) {
 		t.Helper()
-		config := &config.PgSQLConfig{
+		config := &Config{
 			Host:          pgsqlstoreTestPgConfig.pgConfig.Host,
-			DbName:        "test_db",
+			DBName:        "test_db",
 			User:          "",
 			Password:      "",
 			SSLMode:       pgsqlstoreTestPgConfig.pgConfig.SSLMode,
-			PaginationKey: "XxoPtCUzrUv4JV5dS+yQ+MdW7yLEJnRMwigVY/bpgtQ=",
+			PaginationKey: paginationKey,
 		}
 		_ = os.Setenv("PGUSER", pgsqlstoreTestPgConfig.pgConfig.User)
 		_ = os.Setenv("PGPASSWORD", pgsqlstoreTestPgConfig.pgConfig.Password)
-		pg, err := storage.NewPgSQLStore(config)
+		pg, err := NewPgSQLStore(config)
 		if err != nil {
 			t.Errorf("Error creating PgSQLStore, %s", err)
 		}
@@ -277,15 +276,15 @@ func TestPgSQLStoreWithUserAsEnv(t *testing.T) {
 func TestBetaPgSQLStoreWithNoPaginationKey(t *testing.T) {
 	createPgSQLStore := func(t *testing.T) (grafeas.Storage, project.Storage, func()) {
 		t.Helper()
-		config := &config.PgSQLConfig{
+		config := &Config{
 			Host:          pgsqlstoreTestPgConfig.pgConfig.Host,
-			DbName:        "test_db",
+			DBName:        "test_db",
 			User:          pgsqlstoreTestPgConfig.pgConfig.User,
 			Password:      pgsqlstoreTestPgConfig.pgConfig.Password,
 			SSLMode:       pgsqlstoreTestPgConfig.pgConfig.SSLMode,
 			PaginationKey: "",
 		}
-		pg, err := storage.NewPgSQLStore(config)
+		pg, err := NewPgSQLStore(config)
 		if err != nil {
 			t.Errorf("Error creating PgSQLStore, %s", err)
 		}
@@ -298,15 +297,15 @@ func TestBetaPgSQLStoreWithNoPaginationKey(t *testing.T) {
 }
 
 func TestBetaPgSQLStoreWithInvalidPaginationKey(t *testing.T) {
-	config := &config.PgSQLConfig{
+	config := &Config{
 		Host:          pgsqlstoreTestPgConfig.pgConfig.Host,
-		DbName:        "test_db",
+		DBName:        "test_db",
 		User:          pgsqlstoreTestPgConfig.pgConfig.User,
 		Password:      pgsqlstoreTestPgConfig.pgConfig.Password,
 		SSLMode:       pgsqlstoreTestPgConfig.pgConfig.SSLMode,
 		PaginationKey: "INVALID_VALUE",
 	}
-	pg, err := storage.NewPgSQLStore(config)
+	pg, err := NewPgSQLStore(config)
 	if pg != nil {
 		pg.Close()
 	}

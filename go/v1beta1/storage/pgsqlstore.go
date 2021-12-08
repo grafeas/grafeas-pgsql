@@ -573,8 +573,6 @@ func (pg *PgSQLStore) ListNotes(ctx context.Context, pID, filter, pageToken stri
 
 // ListNoteOccurrences returns up to pageSize number of occcurrences on the particular note (nID)
 // for this project (pID) projects beginning at pageToken (or from start if pageToken is the empty string).
-// TODO: implement query filter for NoteOccurrences.
-// ListNoteOccurrences is not used by grafeas-client currently.
 func (pg *PgSQLStore) ListNoteOccurrences(ctx context.Context, pID, nID, filter, pageToken string, pageSize int32) ([]*pb.Occurrence, string, error) {
 	// Verify that note exists
 	if _, err := pg.GetNote(ctx, pID, nID); err != nil {

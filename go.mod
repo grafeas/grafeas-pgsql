@@ -3,6 +3,7 @@ module github.com/grafeas/grafeas-pgsql
 go 1.17
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.4.1
 	github.com/fernet/fernet-go v0.0.0-20191111064656-eff2850e6001
 	github.com/golang/protobuf v1.4.2
 	github.com/google/uuid v1.1.1

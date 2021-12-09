@@ -46,23 +46,25 @@ const (
 	insertProject = `INSERT INTO projects(name) VALUES ($1)`
 	projectExists = `SELECT EXISTS (SELECT 1 FROM projects WHERE name = $1)`
 	deleteProject = `DELETE FROM projects WHERE name = $1`
-	listProjects  = `SELECT id, name FROM projects WHERE id > $1 LIMIT $2`
-	projectCount  = `SELECT COUNT(*) FROM projects`
+	// "ORDER BY id" is required because the default select order of PostgreSQL is not guaranteed.
+	listProjects  = `SELECT id, name FROM projects WHERE %s id > $1 ORDER BY id LIMIT $2`
+	projectsMaxID = `SELECT MAX(id) FROM projects`
 
 	insertOccurrence = `INSERT INTO occurrences(project_name, occurrence_name, note_id, data)
                       VALUES ($1, $2, (SELECT id FROM notes WHERE project_name = $3 AND note_name = $4), $5)`
 	searchOccurrence = `SELECT data FROM occurrences WHERE project_name = $1 AND occurrence_name = $2`
 	updateOccurrence = `UPDATE occurrences SET data = $1 WHERE project_name = $2 AND occurrence_name = $3`
 	deleteOccurrence = `DELETE FROM occurrences WHERE project_name = $1 AND occurrence_name = $2`
-	listOccurrences  = `SELECT id, data FROM occurrences WHERE project_name = $1 AND id > $2 LIMIT $3`
-	occurrenceCount  = `SELECT COUNT(*) FROM occurrences WHERE project_name = $1`
+	// "ORDER BY id" is required because the default select order of PostgreSQL is not guaranteed.
+	listOccurrences = `SELECT id, data FROM occurrences WHERE project_name = $1 %s AND id > $2 ORDER BY id LIMIT $3`
+	occurrenceMaxID = `SELECT MAX(id) FROM occurrences WHERE project_name = $1 %s`
 
 	insertNote          = `INSERT INTO notes(project_name, note_name, data) VALUES ($1, $2, $3)`
 	searchNote          = `SELECT data FROM notes WHERE project_name = $1 AND note_name = $2`
 	updateNote          = `UPDATE notes SET data = $1 WHERE project_name = $2 AND note_name = $3`
 	deleteNote          = `DELETE FROM notes WHERE project_name = $1 AND note_name = $2`
-	listNotes           = `SELECT id, data FROM notes WHERE project_name = $1 AND id > $2 LIMIT $3`
-	noteCount           = `SELECT COUNT(*) FROM notes WHERE project_name = $1`
+	listNotes           = `SELECT id, data FROM notes WHERE project_name = $1 %s AND id > $2 ORDER BY id LIMIT $3`
+	notesMaxID          = `SELECT MAX(id) FROM notes WHERE project_name = $1 %s`
 	listNoteOccurrences = `SELECT o.id, o.data FROM occurrences as o, notes as n
 	                         WHERE n.id = o.note_id
 	                           AND n.project_name = $1
@@ -70,7 +72,7 @@ const (
 	                           AND o.id > $3
 	                           LIMIT $4`
 
-	noteOccurrencesCount = `SELECT COUNT(*) FROM occurrences as o, notes as n
+	NoteOccurrencesMaxID = `SELECT MAX(o.id) FROM occurrences as o, notes as n
 	                         WHERE n.id = o.note_id
 	                           AND n.project_name = $1
 	                           AND n.note_name = $2`

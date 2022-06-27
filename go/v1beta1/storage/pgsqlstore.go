@@ -37,6 +37,7 @@ import (
 	fieldmaskpb "google.golang.org/genproto/protobuf/field_mask"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // Config is the configuration for PostgreSQL store.
@@ -267,7 +268,14 @@ func (pg *PgSQLStore) CreateOccurrence(ctx context.Context, pID, uID string, o *
 		log.Printf("Invalid note name: %v", o.NoteName)
 		return nil, status.Error(codes.InvalidArgument, "Invalid note name")
 	}
-	_, err = pg.DB.ExecContext(ctx, insertOccurrence, pID, id, nPID, nID, proto.MarshalTextString(o))
+
+	occurrenceJson, err := protojson.Marshal(o)
+	if err != nil {
+		log.Printf("Occurrence can't be marshalled to json")
+		return nil, status.Error(codes.InvalidArgument, "Can't marshal occurrence to json")
+	}
+
+	_, err = pg.DB.ExecContext(ctx, insertOccurrence, pID, id, nPID, nID, occurrenceJson)
 	if err, ok := err.(*pq.Error); ok {
 		// Check for unique_violation
 		if err.Code == "23505" {
@@ -324,7 +332,13 @@ func (pg *PgSQLStore) UpdateOccurrence(ctx context.Context, pID, oID string, o *
 	// TODO(#312): implement the update operation
 	o.UpdateTime = ptypes.TimestampNow()
 
-	result, err := pg.DB.ExecContext(ctx, updateOccurrence, proto.MarshalTextString(o), pID, oID)
+	occurrenceJson, err := protojson.Marshal(o)
+	if err != nil {
+		log.Printf("Occurrence can't be marshalled to json")
+		return nil, status.Error(codes.InvalidArgument, "Can't marshal occurrence to json")
+	}
+
+	result, err := pg.DB.ExecContext(ctx, updateOccurrence, occurrenceJson, pID, oID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to update Occurrence")
 	}
@@ -340,7 +354,7 @@ func (pg *PgSQLStore) UpdateOccurrence(ctx context.Context, pID, oID string, o *
 
 // GetOccurrence returns the occurrence with pID and oID
 func (pg *PgSQLStore) GetOccurrence(ctx context.Context, pID, oID string) (*pb.Occurrence, error) {
-	var data string
+	var data []byte
 	err := pg.DB.QueryRowContext(ctx, searchOccurrence, pID, oID).Scan(&data)
 	switch {
 	case err == sql.ErrNoRows:
@@ -349,7 +363,7 @@ func (pg *PgSQLStore) GetOccurrence(ctx context.Context, pID, oID string) (*pb.O
 		return nil, status.Error(codes.Internal, "Failed to query Occurrence from database")
 	}
 	var o pb.Occurrence
-	if err = proto.UnmarshalText(data, &o); err != nil {
+	if err = protojson.Unmarshal(data, &o); err != nil {
 		return nil, status.Error(codes.Internal, "Failed to unmarshal Occurrence from database")
 	}
 	// Set the output-only field before returning
@@ -376,13 +390,13 @@ func (pg *PgSQLStore) ListOccurrences(ctx context.Context, pID, filter, pageToke
 	var os []*pb.Occurrence
 	var lastID int64
 	for rows.Next() {
-		var data string
+		var data []byte
 		err := rows.Scan(&lastID, &data)
 		if err != nil {
 			return nil, "", status.Error(codes.Internal, "Failed to scan Occurrences row")
 		}
 		var o pb.Occurrence
-		if err = proto.UnmarshalText(data, &o); err != nil {
+		if err = protojson.Unmarshal(data, &o); err != nil {
 			return nil, "", status.Error(codes.Internal, "Failed to unmarshal Occurrence from database")
 		}
 		os = append(os, &o)
@@ -412,7 +426,13 @@ func (pg *PgSQLStore) CreateNote(ctx context.Context, pID, nID, uID string, n *p
 	n.Name = nName
 	n.CreateTime = ptypes.TimestampNow()
 
-	_, err := pg.DB.ExecContext(ctx, insertNote, pID, nID, proto.MarshalTextString(n))
+	noteJson, err := protojson.Marshal(n)
+	if err != nil {
+		log.Printf("Note can't be marshalled to json")
+		return nil, status.Error(codes.InvalidArgument, "Can't marshal note to json")
+	}
+
+	_, err = pg.DB.ExecContext(ctx, insertNote, pID, nID, noteJson)
 	if err, ok := err.(*pq.Error); ok {
 		// Check for unique_violation
 		if err.Code == "23505" {
@@ -470,7 +490,13 @@ func (pg *PgSQLStore) UpdateNote(ctx context.Context, pID, nID string, n *pb.Not
 	// TODO(#312): implement the update operation
 	n.UpdateTime = ptypes.TimestampNow()
 
-	result, err := pg.DB.ExecContext(ctx, updateNote, proto.MarshalTextString(n), pID, nID)
+	noteJson, err := protojson.Marshal(n)
+	if err != nil {
+		log.Printf("Note can't be marshalled to json")
+		return nil, status.Error(codes.InvalidArgument, "Can't marshal note to json")
+	}
+
+	result, err := pg.DB.ExecContext(ctx, updateNote, noteJson, pID, nID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to update Note")
 	}
@@ -486,7 +512,7 @@ func (pg *PgSQLStore) UpdateNote(ctx context.Context, pID, nID string, n *pb.Not
 
 // GetNote returns the note with project (pID) and note ID (nID)
 func (pg *PgSQLStore) GetNote(ctx context.Context, pID, nID string) (*pb.Note, error) {
-	var data string
+	var data []byte
 	err := pg.DB.QueryRowContext(ctx, searchNote, pID, nID).Scan(&data)
 	switch {
 	case err == sql.ErrNoRows:
@@ -495,7 +521,7 @@ func (pg *PgSQLStore) GetNote(ctx context.Context, pID, nID string) (*pb.Note, e
 		return nil, status.Error(codes.Internal, "Failed to query Note from database")
 	}
 	var note pb.Note
-	if err = proto.UnmarshalText(data, &note); err != nil {
+	if err = protojson.Unmarshal(data, &note); err != nil {
 		return nil, status.Error(codes.Internal, "Failed to unmarshal Note from database")
 	}
 	// Set the output-only field before returning
@@ -542,13 +568,13 @@ func (pg *PgSQLStore) ListNotes(ctx context.Context, pID, filter, pageToken stri
 	var ns []*pb.Note
 	var lastID int64
 	for rows.Next() {
-		var data string
+		var data []byte
 		err := rows.Scan(&lastID, &data)
 		if err != nil {
 			return nil, "", status.Error(codes.Internal, "Failed to scan Notes row")
 		}
 		var n pb.Note
-		if err = proto.UnmarshalText(data, &n); err != nil {
+		if err = protojson.Unmarshal(data, &n); err != nil {
 			return nil, "", status.Error(codes.Internal, "Failed to unmarshal Note from database")
 		}
 		ns = append(ns, &n)
@@ -587,13 +613,13 @@ func (pg *PgSQLStore) ListNoteOccurrences(ctx context.Context, pID, nID, filter,
 	var os []*pb.Occurrence
 	var lastID int64
 	for rows.Next() {
-		var data string
+		var data []byte
 		err := rows.Scan(&lastID, &data)
 		if err != nil {
 			return nil, "", status.Error(codes.Internal, "Failed to scan Occurrences row")
 		}
 		var o pb.Occurrence
-		if err = proto.UnmarshalText(data, &o); err != nil {
+		if err = protojson.Unmarshal(data, &o); err != nil {
 			return nil, "", status.Error(codes.Internal, "Failed to unmarshal Occurrence from database")
 		}
 		os = append(os, &o)

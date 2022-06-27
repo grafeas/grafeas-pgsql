@@ -24,23 +24,16 @@ const (
 			id SERIAL PRIMARY KEY,
 			project_name TEXT NOT NULL,
 			note_name TEXT NOT NULL,
-			data TEXT,
+			data JSONB,
 			UNIQUE (project_name, note_name)
 		);
 		CREATE TABLE IF NOT EXISTS occurrences (
 			id SERIAL PRIMARY KEY,
 			project_name TEXT NOT NULL,
 			occurrence_name TEXT NOT NULL,
-			data TEXT,
+			data JSONB,
 			note_id int REFERENCES notes NOT NULL,
 			UNIQUE (project_name, occurrence_name)
-		);
-		CREATE TABLE IF NOT EXISTS operations (
-			id SERIAL PRIMARY KEY,
-			project_name TEXT NOT NULL,
-			operation_name TEXT NOT NULL,
-			data TEXT,
-			UNIQUE (project_name, operation_name)
 		);`
 
 	insertProject = `INSERT INTO projects(name) VALUES ($1)`

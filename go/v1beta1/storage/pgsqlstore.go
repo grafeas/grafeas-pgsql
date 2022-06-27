@@ -24,8 +24,6 @@ import (
 	"time"
 
 	"github.com/fernet/fernet-go"
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/uuid"
 	"github.com/grafeas/grafeas/go/config"
 	"github.com/grafeas/grafeas/go/name"
@@ -38,6 +36,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Config is the configuration for PostgreSQL store.
@@ -253,7 +253,7 @@ func (pg *PgSQLStore) ListProjects(ctx context.Context, filter string, pageSize 
 // CreateOccurrence adds the specified occurrence
 func (pg *PgSQLStore) CreateOccurrence(ctx context.Context, pID, uID string, o *pb.Occurrence) (*pb.Occurrence, error) {
 	o = proto.Clone(o).(*pb.Occurrence)
-	o.CreateTime = ptypes.TimestampNow()
+	o.CreateTime = timestamppb.Now()
 
 	var id string
 	if nr, err := uuid.NewRandom(); err != nil {
@@ -330,7 +330,7 @@ func (pg *PgSQLStore) DeleteOccurrence(ctx context.Context, pID, oID string) err
 func (pg *PgSQLStore) UpdateOccurrence(ctx context.Context, pID, oID string, o *pb.Occurrence, mask *fieldmaskpb.FieldMask) (*pb.Occurrence, error) {
 	o = proto.Clone(o).(*pb.Occurrence)
 	// TODO(#312): implement the update operation
-	o.UpdateTime = ptypes.TimestampNow()
+	o.UpdateTime = timestamppb.Now()
 
 	occurrenceJson, err := protojson.Marshal(o)
 	if err != nil {
@@ -424,7 +424,7 @@ func (pg *PgSQLStore) CreateNote(ctx context.Context, pID, nID, uID string, n *p
 	n = proto.Clone(n).(*pb.Note)
 	nName := name.FormatNote(pID, nID)
 	n.Name = nName
-	n.CreateTime = ptypes.TimestampNow()
+	n.CreateTime = timestamppb.Now()
 
 	noteJson, err := protojson.Marshal(n)
 	if err != nil {
@@ -488,7 +488,7 @@ func (pg *PgSQLStore) UpdateNote(ctx context.Context, pID, nID string, n *pb.Not
 	nName := name.FormatNote(pID, nID)
 	n.Name = nName
 	// TODO(#312): implement the update operation
-	n.UpdateTime = ptypes.TimestampNow()
+	n.UpdateTime = timestamppb.Now()
 
 	noteJson, err := protojson.Marshal(n)
 	if err != nil {

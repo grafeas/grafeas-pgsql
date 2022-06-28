@@ -271,8 +271,8 @@ func (pg *PgSQLStore) CreateOccurrence(ctx context.Context, pID, uID string, o *
 
 	occurrenceJson, err := protojson.Marshal(o)
 	if err != nil {
-		log.Printf("Occurrence can't be marshalled to json")
-		return nil, status.Error(codes.InvalidArgument, "Can't marshal occurrence to json")
+		log.Printf("Failed to marshal occurrence to json")
+		return nil, status.Error(codes.InvalidArgument, "Failed to marshal occurrence to json")
 	}
 
 	_, err = pg.DB.ExecContext(ctx, insertOccurrence, pID, id, nPID, nID, occurrenceJson)
@@ -334,8 +334,8 @@ func (pg *PgSQLStore) UpdateOccurrence(ctx context.Context, pID, oID string, o *
 
 	occurrenceJson, err := protojson.Marshal(o)
 	if err != nil {
-		log.Printf("Occurrence can't be marshalled to json")
-		return nil, status.Error(codes.InvalidArgument, "Can't marshal occurrence to json")
+		log.Printf("Failed to marshal occurrence to json")
+		return nil, status.Error(codes.InvalidArgument, "Failed to marshal occurrence to json")
 	}
 
 	result, err := pg.DB.ExecContext(ctx, updateOccurrence, occurrenceJson, pID, oID)
@@ -428,8 +428,8 @@ func (pg *PgSQLStore) CreateNote(ctx context.Context, pID, nID, uID string, n *p
 
 	noteJson, err := protojson.Marshal(n)
 	if err != nil {
-		log.Printf("Note can't be marshalled to json")
-		return nil, status.Error(codes.InvalidArgument, "Can't marshal note to json")
+		log.Printf("Failed to marshal note to json")
+		return nil, status.Error(codes.InvalidArgument, "Failed to marshal note to json")
 	}
 
 	_, err = pg.DB.ExecContext(ctx, insertNote, pID, nID, noteJson)
@@ -492,8 +492,8 @@ func (pg *PgSQLStore) UpdateNote(ctx context.Context, pID, nID string, n *pb.Not
 
 	noteJson, err := protojson.Marshal(n)
 	if err != nil {
-		log.Printf("Note can't be marshalled to json")
-		return nil, status.Error(codes.InvalidArgument, "Can't marshal note to json")
+		log.Printf("Failed to marshal note to json")
+		return nil, status.Error(codes.InvalidArgument, "Failed to marshal note to json")
 	}
 
 	result, err := pg.DB.ExecContext(ctx, updateNote, noteJson, pID, nID)
@@ -597,7 +597,7 @@ func (pg *PgSQLStore) ListNotes(ctx context.Context, pID, filter, pageToken stri
 	return ns, encryptedPage, nil
 }
 
-// ListNoteOccurrences returns up to pageSize number of occcurrences on the particular note (nID)
+// ListNoteOccurrences returns up to pageSize number of occurrences on the particular note (nID)
 // for this project (pID) projects beginning at pageToken (or from start if pageToken is the empty string).
 func (pg *PgSQLStore) ListNoteOccurrences(ctx context.Context, pID, nID, filter, pageToken string, pageSize int32) ([]*pb.Occurrence, string, error) {
 	// Verify that note exists

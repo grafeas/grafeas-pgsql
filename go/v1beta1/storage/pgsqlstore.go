@@ -72,8 +72,8 @@ type PgSQLStore struct {
 	paginationKey string
 }
 
-// StorageTypeProvider creates and initializes a new grafeas v1beta1 storage compatible PgSQL store based on the specified config.
-func StorageTypeProvider(_ string, ci *config.StorageConfiguration) (*storage.Storage, error) {
+// PostgresqlStorageTypeProvider creates and initializes a new grafeas v1beta1 storage compatible PgSQL store based on the specified config.
+func PostgresqlStorageTypeProvider(_ string, ci *config.StorageConfiguration) (*storage.Storage, error) {
 	var c Config
 	err := config.ConvertGenericConfigToSpecificType(ci, &c)
 	if err != nil {

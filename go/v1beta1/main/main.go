@@ -12,7 +12,7 @@ import (
 func main() {
 	err := grafeasStorage.RegisterStorageTypeProvider("postgres", storage.PostgresqlStorageTypeProvider)
 	if err != nil {
-		log.Panicf("Error when registering postgres storage provider, %s", err)
+		log.Fatalf("Failed to registering postgres storage provider, %s", err)
 	}
 
 	err = server.StartGrafeas()

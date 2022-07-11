@@ -19,10 +19,10 @@ import (
 	"log"
 	"strings"
 
+	expr "github.com/grafeas/grafeas/cel"
 	"github.com/grafeas/grafeas/go/filtering/common"
 	"github.com/grafeas/grafeas/go/filtering/operators"
 	"github.com/grafeas/grafeas/go/filtering/parser"
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
 type FilterSQL struct {

@@ -50,6 +50,8 @@ func (fs *FilterSQL) sqlFromCall(funcName string, args []*expr.Expr) string {
 		sqlOp = "OR"
 	case operators.Index:
 		sqlOp = "["
+	case operators.Has:
+		sqlOp = "like"
 	default:
 		sqlOp = ""
 	}
@@ -59,6 +61,8 @@ func (fs *FilterSQL) sqlFromCall(funcName string, args []*expr.Expr) string {
 	}
 	if sqlOp == "[" {
 		return fmt.Sprintf("%s[%s]", argNames[0], argNames[1])
+	} else if sqlOp == "like" {
+		return fmt.Sprintf("(%s %s %s)", argNames[0], sqlOp, formatLikeString(argNames[1]))
 	} else if sqlOp != "" {
 		return fmt.Sprintf("(%s %s %s)", argNames[0], sqlOp, argNames[1])
 	}
@@ -141,4 +145,8 @@ func (fs *FilterSQL) ParseFilter(filter string) string {
 	}
 	sql := fs.makeSQL(result.Expr)
 	return sql
+}
+
+func formatLikeString(argName string) string {
+	return "'%" + strings.Split(argName, "'")[1] + "%'"
 }

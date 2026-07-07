@@ -29,6 +29,13 @@ type FilterSQL struct {
 	selects int
 }
 
+// pqQuote returns s as a safely-escaped PostgreSQL string literal.
+// Standard-conforming strings are on by default in lib/pq, so doubling
+// single quotes is sufficient to prevent literal breakout.
+func pqQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+}
+
 func (fs *FilterSQL) sqlFromCall(funcName string, args []*expr.Expr) string {
 	var sqlOp string
 	switch funcName {
@@ -62,7 +69,9 @@ func (fs *FilterSQL) sqlFromCall(funcName string, args []*expr.Expr) string {
 	} else if sqlOp != "" {
 		return fmt.Sprintf("(%s %s %s)", argNames[0], sqlOp, argNames[1])
 	}
-	return fmt.Sprintf("%s(%s)", funcName, strings.Join(argNames, ", "))
+	// Unknown/unsupported function: do not pass attacker-controlled function
+	// names through to SQL. Emit NULL so the surrounding comparison is falsy.
+	return "NULL"
 }
 
 func (fs *FilterSQL) sqlFromSelect(selectNode *expr.Expr_Select) string {
@@ -80,7 +89,7 @@ func (fs *FilterSQL) getConstantValue(constExpr *expr.Constant) string {
 	case *expr.Constant_DoubleValue:
 		return fmt.Sprintf("%f", constExpr.GetDoubleValue())
 	case *expr.Constant_StringValue:
-		return fmt.Sprintf("'%s'", constExpr.GetStringValue())
+		return pqQuote(constExpr.GetStringValue())
 	}
 	return "NO CONST"
 }
@@ -98,13 +107,11 @@ func (fs *FilterSQL) makeSQL(node *expr.Expr) string {
 		if fs.selects == 0 {
 			spl := strings.Split(retStr, ".")
 			retVal := "data"
-			sep := "->'"
-			sep2 := "->>'"
 			for i := 0; i < len(spl); i++ {
 				if i != len(spl)-1 {
-					retVal = retVal + sep + spl[i] + "'"
+					retVal = retVal + "->" + pqQuote(spl[i])
 				} else {
-					retVal = retVal + sep2 + spl[i] + "'"
+					retVal = retVal + "->>" + pqQuote(spl[i])
 				}
 			}
 
@@ -121,7 +128,7 @@ func (fs *FilterSQL) makeSQL(node *expr.Expr) string {
 			return i_expr.Name
 		}
 		//return "data->'$." + i_expr.Name + "'"
-		return "data->>'" + i_expr.Name + "'"
+		return "data->>" + pqQuote(i_expr.Name)
 	case *expr.Expr_ConstExpr:
 		c_expr := *node.GetConstExpr()
 		return fs.getConstantValue(&c_expr)
